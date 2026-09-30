@@ -28,6 +28,8 @@ app.use((req, res, next) => {
 
   const allowedOrigins = [
     'https://event-booking-psi-nine.vercel.app',
+    'https://event-booking-git-main-my-project-e2b8.vercel.app',
+    'https://event-booking-pkj75czez-my-project-e2b8.vercel.app',
     'http://localhost:5173'
   ];
 
