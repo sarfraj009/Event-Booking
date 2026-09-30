@@ -23,19 +23,37 @@ const app = express();
    CORS CONFIGURATION
 ========================= */
 
-const corsOptions = {
-  origin: true,
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  optionsSuccessStatus: 204
-};
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
 
-// Allow CORS
-app.use(cors(corsOptions));
+  const allowedOrigins = [
+    'https://event-booking-psi-nine.vercel.app',
+    'http://localhost:5173'
+  ];
 
-// Handle preflight OPTIONS requests
-app.options(/.*/, cors(corsOptions));
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+
+  res.setHeader(
+    'Access-Control-Allow-Methods',
+    'GET,POST,PUT,DELETE,PATCH,OPTIONS'
+  );
+
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'Content-Type,Authorization'
+  );
+
+  // Handle browser preflight request
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204);
+  }
+
+  next();
+});
 
 /* =========================
    SECURITY & MIDDLEWARE
