@@ -19,32 +19,69 @@ const { cleanupCancelledBookings } = require('./controllers/bookingController');
 
 const app = express();
 
-// Middleware
-app.use(cors({
-  origin: [
-    'https://event-booking-psi-nine.vercel.app',
-    'http://localhost:5173'
-  ],
+/* =========================
+   CORS CONFIGURATION
+========================= */
+
+const corsOptions = {
+  origin: true,
+  credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
-}));
+  optionsSuccessStatus: 204
+};
 
-app.options(/.*/, cors());
+// Allow CORS
+app.use(cors(corsOptions));
+
+// Handle preflight OPTIONS requests
+app.options(/.*/, cors(corsOptions));
+
+/* =========================
+   SECURITY & MIDDLEWARE
+========================= */
+
 app.use(helmet());
-app.use(rateLimit({ windowMs: 15 * 60 * 1000, limit: 300, standardHeaders: 'draft-7', legacyHeaders: false }));
+
+app.use(
+  rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 300,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false
+  })
+);
+
 app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+app.use(
+  express.urlencoded({
+    extended: true,
+    limit: '10mb'
+  })
+);
+
+/* =========================
+   MULTIPART REQUEST HANDLER
+========================= */
+
 app.use((req, res, next) => {
   if (req.originalUrl.includes('/api/events')) {
-    if (req.headers['content-type'] && req.headers['content-type'].includes('multipart/form-data')) {
+    if (
+      req.headers['content-type'] &&
+      req.headers['content-type'].includes('multipart/form-data')
+    ) {
       return next();
     }
   }
+
   return next();
 });
 
-// Routes
+/* =========================
+   ROUTES
+========================= */
+
 app.use('/api/auth', authRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/bookings', bookingRoutes);
@@ -52,19 +89,57 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/tickets', ticketRoutes);
 app.use('/api/users', userRoutes);
 
-// Database Connection
-mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/eventora')
+/* =========================
+   HEALTH CHECK
+========================= */
+
+app.get('/', (req, res) => {
+  res.status(200).send('Eventora API is running');
+});
+
+/* =========================
+   DATABASE CONNECTION
+========================= */
+
+mongoose
+  .connect(
+    process.env.MONGO_URI || 'mongodb://localhost:27017/eventora'
+  )
   .then(() => {
     console.log('MongoDB Connected');
+
     cleanupCancelledBookings();
-    setInterval(cleanupCancelledBookings, 60 * 60 * 1000);
+
+    setInterval(
+      cleanupCancelledBookings,
+      60 * 60 * 1000
+    );
   })
-  .catch(err => console.error('MongoDB Connection Error:', err));
+  .catch((err) => {
+    console.error('MongoDB Connection Error:', err);
+  });
+
+/* =========================
+   SERVER
+========================= */
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, '0.0.0.0', () => console.log(`Server running on port ${PORT}`));
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on port ${PORT}`);
+});
+
+/* =========================
+   ERROR HANDLER
+========================= */
 
 app.use((error, req, res, next) => {
   console.error(error);
-  res.status(error.statusCode || 500).json({ success: false, message: error.statusCode ? error.message : 'Internal server error' });
+
+  res.status(error.statusCode || 500).json({
+    success: false,
+    message: error.statusCode
+      ? error.message
+      : 'Internal server error'
+  });
 });
